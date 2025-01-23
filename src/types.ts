@@ -6,11 +6,23 @@ export interface Message {
 }
 
 export interface ChatResponse {
-  candidates: {
+  candidates: Array<{
     content: {
-      parts: {
+      parts: Array<{
         text: string;
-      }[];
+      }>;
     };
-  }[];
+    finishReason: string;
+    index: number;
+    safetyRatings: Array<{
+      category: string;
+      probability: string;
+    }>;
+  }>;
+  promptFeedback: {
+    safetyRatings: Array<{
+      category: string;
+      probability: string;
+    }>;
+  };
 }

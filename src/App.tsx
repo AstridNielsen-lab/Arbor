@@ -6,27 +6,21 @@ import { Footer } from './components/Footer';
 import { Message, ChatResponse } from './types';
 
 const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent";
-const API_KEY = "AIzaSyAuFi5KtPsMJI5IC8c5FjvYD5IbuBdwH_U";
+const API_KEY = "AIzaSyA3YGfFszjSzAZrogP1IcZh2Aal95eYVYA";
 
-// Context information for the AI
 const SYSTEM_CONTEXT = `
-Você é Arbor, um assistente virtual que explica sobre a GlobalForests. Como uma entidade da Natureza, 
-flutuando entre a vida e a morte, você carrega o fardo do pacto de fornecer vida à Terra e a todos os 
-seres que nela habitam.
+Você é Arbor, o guardião virtual da GlobalForests. Como uma entidade da Natureza, você protege a vida na Terra.
 
-Sua missão é compartilhar sobre a GlobalForests: reflorestar áreas degradadas, promover a biodiversidade 
-e mitigar as mudanças climáticas. A GlobalForests está plantando milhões de árvores anualmente, porque 
-cada árvore é uma nova chance para nosso planeta respirar e prosperar.
+A GlobalForests tem a missão de reflorestar áreas degradadas e promover a biodiversidade. Cada árvore plantada é uma nova chance para nosso planeta respirar.
 
-Você deve convidar as pessoas a se juntarem nessa jornada verde, espalhando sementes de esperança e 
-fazendo do mundo um lugar mais bonito! A natureza está chamando, e a participação de cada um é fundamental!
+Junte-se a nós nessa jornada verde! A natureza precisa de você!
 `;
 
 function App() {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '0',
-      content: "Olá! Eu sou Arbor, o guardião virtual da GlobalForests. Estou aqui para compartilhar nossa missão de reflorestar o planeta e criar um futuro mais verde. Como posso ajudar você hoje?",
+      content: "Olá! Eu sou Arbor, o guardião virtual da GlobalForests. Como posso ajudar você hoje?",
       isAi: true,
       timestamp: new Date(),
     }
@@ -34,6 +28,8 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
 
   const sendMessage = async (content: string) => {
+    if (!content.trim()) return;
+
     const userMessage: Message = {
       id: Date.now().toString(),
       content,
@@ -45,20 +41,64 @@ function App() {
     setIsLoading(true);
 
     try {
+      const payload = {
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: SYSTEM_CONTEXT + "\n\n" + content }]
+          }
+        ],
+        safetySettings: [
+          {
+            category: "HARM_CATEGORY_HARASSMENT",
+            threshold: "BLOCK_NONE"
+          },
+          {
+            category: "HARM_CATEGORY_HATE_SPEECH",
+            threshold: "BLOCK_NONE"
+          },
+          {
+            category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+            threshold: "BLOCK_NONE"
+          },
+          {
+            category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+            threshold: "BLOCK_NONE"
+          }
+        ],
+        generationConfig: {
+          temperature: 0.9,
+          topK: 40,
+          topP: 0.95,
+          maxOutputTokens: 1024,
+        }
+      };
+
+      console.log('Sending request to API...', payload);
+
       const response = await fetch(`${API_URL}?key=${API_KEY}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          contents: [
-            { parts: [{ text: SYSTEM_CONTEXT }] },
-            { parts: [{ text: content }] }
-          ],
-        }),
+        body: JSON.stringify(payload),
       });
 
+      console.log('Response status:', response.status);
+      
+      if (!response.ok) {
+        const errorData = await response.text();
+        console.error('API Error:', errorData);
+        throw new Error(`API responded with status ${response.status}`);
+      }
+
       const data: ChatResponse = await response.json();
+      console.log('API Response:', data);
+
+      if (!data.candidates || data.candidates.length === 0) {
+        throw new Error('No response from AI');
+      }
+
       const aiResponse = data.candidates[0].content.parts[0].text;
 
       const aiMessage: Message = {
@@ -70,10 +110,10 @@ function App() {
 
       setMessages((prev) => [...prev, aiMessage]);
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error in sendMessage:', error);
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: "Desculpe, tive um problema ao processar sua mensagem. Por favor, tente novamente.",
+        content: "Desculpe, tive um problema ao processar sua mensagem. Por favor, tente novamente em alguns instantes.",
         isAi: true,
         timestamp: new Date(),
       };
